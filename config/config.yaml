@@ -1,3 +1,4 @@
 subscriber_topic: "/encoder_count"
 period: 0.05
 imp_per_rot: 10000  #encoder's impulses per rotation
+i_limit: 1.0
