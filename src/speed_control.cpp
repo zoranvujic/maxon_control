@@ -44,44 +44,49 @@ namespace maxon_control {
 
 void SpeedControl::topicCallback(const std_msgs::Int16& msg)
   {
-    int counter = msg.data;
+    
+    int counter = msg.data; //number of impulses
     int pwm=0;
     std_msgs::Int16 err_msg;
     std_msgs::Float64 rpm_msg,rpm_err_msg,u_msg;
     std_msgs::UInt8 pwm_msg;
-    double speed, rps, rpm, prev_speed, prev_rps, prev_rpm, err_rpm, ref_rpm;
+    double speed, rps, rpm,prev_rpm, prev_speed, err_rpm, ref_rpm;
 
-    ref_rpm = speed_;
-
+    if(rotation_) //if rotation is clockwise
+    {
+      ref_rpm = speed_;
+    }else //if rotation is counter clockwise
+    {
+      ref_rpm = -speed_;
+    }
+    
+    /********calculating speed of rotation (rpm)**********/
     err_=counter-prev_counter_;
     speed = err_ / T_;
     prev_speed = prev_err_/T_;
     rps = speed/imp_per_rot_;
-    prev_rps = prev_speed/imp_per_rot_;
 
     rpm = rps*60;
-    prev_rpm = prev_rps*60;
+    /*************************************************/
 
     err_rpm = ref_rpm-rpm;
 
-    if (ref_rpm < 0.1)
+    if (abs(ref_rpm) < 0.1) //if speed is 0, stop motor
     {
         u_ = 0;
         pwm_msg.data = 0;
         pub_pwm_.publish(pwm_msg);
         dUi_ = 0.0;
-    }else if (ref_rpm<120){
+    }else if (abs(ref_rpm)<120){  //if speed is low, allow greater error
       if (abs(err_rpm) > 5)
       {
-      
         pwm=pid_regulator(err_rpm);
         pwm_msg.data = pwm;
         pub_pwm_.publish(pwm_msg);
       }
-    }else{
+    }else{  //if speed is high (more than 120 rpm)
       if (abs(err_rpm) > 2.5)
       {
-      
         pwm=pid_regulator(err_rpm);
         pwm_msg.data = pwm;
         pub_pwm_.publish(pwm_msg);
@@ -139,35 +144,54 @@ void SpeedControl::topicCallback(const std_msgs::Int16& msg)
 
     u_=u_+ dUp + dUi + dUd;
 
-    ROS_INFO("%f %f %f %f %f",u_, dUp, dUi,dUd, err_rpm);
+    //ROS_INFO("%f %f %f %f %f",u_, dUp, dUi,dUd, err_rpm);
     dUi_=dUi; 
     /*****************/
-    dUi_=dUi;
 
-    if (u_ > 255.0)
+
+    if (u_ >= 255.0 || u_<= -255)
     {
-      u_=255;
-    }else if(u_<0.0)
-    {
-      u_=0;
+      u_ > 0.0 ? (u_ = 255) : (u_ = -255);
     }
-
-    pwm = DOUBLE_TO_INT(u_);
+    pwm = DOUBLE_TO_INT(abs(u_));
     
     return pwm;
   }
 
   void SpeedControl::callback_pid_reconfigure(maxon_control::ParametersConfig &config, uint32_t level)
   {
-    speed_=config.speed;
+   speed_=config.speed;
 
     kp_=config.KP;
     ki_=config.KI;
     kd_=config.KD;
-    rotation_ = config.cw_rotation;
+
+    if(rotation_ != config.cw_rotation)  //changing direction of motor rotation
+    {
+      if (speed_!=0)  //if motor is rotating
+      {
+        ROS_WARN("TO CHANGE DIRECTION MOTOR HAVE TO SET SPEED AT ZERO (0)!");
+        config.cw_rotation = rotation_; //dont allow changing of rotation if motor is rotating
+      }else //if motor is not rotating
+      {
+        rotation_ = config.cw_rotation; //get direction of rotation
+        std_msgs::UInt8 dir_msg;
+        if (rotation_)
+        {
+          dir_msg.data = 1; 
+        }else
+        {
+          dir_msg.data = 0;
+        }
+        
+        pub_direction_.publish(dir_msg);  //publish direction of rotation to controller
+      }
+      
+    }
+    
     ROS_INFO("Reconfigure Request: %d %f %f %f %s", 
               speed_, kp_, ki_, kd_,rotation_?"True":"False"
-              );
+              );  //write all parameters to console
   }
 
 
