@@ -20,6 +20,7 @@ namespace maxon_control {
 
 
     subscriber_=nodeHandle_.subscribe(subscriber_topic_,2,&SpeedControl::topicCallback,this);
+    subscriber_speed_=nodeHandle_.subscribe("/speed_ref",2,&SpeedControl::speed_ref_callback,this);
     pub_pwm_=nodeHandle_.advertise<std_msgs::UInt8>("/pwm_value",1);
     pub_direction_=nodeHandle_.advertise<std_msgs::UInt8>("/motor_direction",1);
 
@@ -41,6 +42,11 @@ namespace maxon_control {
         nodeHandle_.getParam("i_limit",i_limit_)) return true;
     return false;
   }
+
+void SpeedControl::speed_ref_callback(const std_msgs::Int16& msg)
+{
+    speed_=msg.data;
+}
 
 void SpeedControl::topicCallback(const std_msgs::Int16& msg)
   {
@@ -160,7 +166,7 @@ void SpeedControl::topicCallback(const std_msgs::Int16& msg)
 
   void SpeedControl::callback_pid_reconfigure(maxon_control::ParametersConfig &config, uint32_t level)
   {
-   speed_=config.speed;
+   //speed_=config.speed;
 
     kp_=config.KP;
     ki_=config.KI;

@@ -24,7 +24,7 @@ namespace maxon_control {
         private:
             bool readParameters();
             void topicCallback(const std_msgs::Int16& msg);
-
+	    void speed_ref_callback(const std_msgs::Int16& msg);
             
 
             int pid_regulator(double err_rpm);
@@ -36,7 +36,7 @@ namespace maxon_control {
             ros::Publisher pub_pwm_;
             
             ros::Subscriber subscriber_;
-
+	    ros::Subscriber subscriber_speed_;
             //debug 
             ros::Publisher pub_err_;
             ros::Publisher pub_speed_;
